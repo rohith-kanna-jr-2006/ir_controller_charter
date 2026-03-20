@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import { Train } from '../server/models/Train.ts';
+import { Train } from '../server/models/Train';
 
 dotenv.config();
 

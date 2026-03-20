@@ -4,7 +4,9 @@ import { TrainType } from '../types';
 // Use worker from package
 try {
   // @ts-ignore
-  GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.js', import.meta.url).toString();
+  if (typeof window !== 'undefined' && 'URL' in window) {
+    GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.js', 'http://localhost').toString();
+  }
 } catch (e) {
   // fallback: leave default
 }

@@ -17,7 +17,7 @@ interface ImportMeta {
  */
 class TrainService {
   private dbKey = "ir_central_database_v1";
-  private apiUrl = (import.meta as any).env.VITE_API_URL || "http://localhost:3001";
+  private apiUrl = process.env.VITE_API_URL || "http://localhost:3001";
   private serverAvailable = true;
   private memoryCache: TrainPath[] | null = null;
 

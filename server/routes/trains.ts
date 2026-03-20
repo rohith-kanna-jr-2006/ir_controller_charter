@@ -1,5 +1,5 @@
 import express, { Router, Request, Response } from 'express';
-import { Train, ITrain } from '../models/Train.ts';
+import { Train, ITrain } from '../models/Train';
 
 const router = Router();
 

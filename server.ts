@@ -1,8 +1,8 @@
 import express, { Express } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { connectDatabase, disconnectDatabase } from './server/config.ts';
-import trainRoutes from './server/routes/trains.ts';
+import { connectDatabase, disconnectDatabase } from './server/config';
+import trainRoutes from './server/routes/trains';
 
 // catch uncaught errors early
 process.on('uncaughtException', err => {
