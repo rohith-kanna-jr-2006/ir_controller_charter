@@ -6,11 +6,20 @@
     "outDir": "./dist",
     "esModuleInterop": true,
     "resolveJsonModule": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "jsx": "react-jsx"
   },
   "include": [
     "server.ts",
     "server/**/*",
-    "*.ts"
+    "services/**/*",
+    "scripts/**/*",
+    "types.ts",
+    "constants.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "vite.config.ts"
   ]
 }

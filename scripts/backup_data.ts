@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
-import { Train } from '../server/models/Train.ts';
+import { Train } from '../server/models/Train';
 
 dotenv.config();
 

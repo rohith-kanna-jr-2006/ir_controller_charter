@@ -54,8 +54,8 @@ const SchedulePointSchema = new Schema<ISchedulePoint>(
 
 const TrainSchema = new Schema<ITrain>(
   {
-    id: { type: String, required: true, unique: true, index: true },
-    number: { type: String, required: true, unique: true, index: true },
+    id: { type: String, required: true, unique: true },
+    number: { type: String, required: true, unique: true },
     name: { type: String, required: true },
     type: { type: String, required: true },
     color: { type: String, required: true },
@@ -76,8 +76,8 @@ const TrainSchema = new Schema<ITrain>(
 
 // Create index on frequently queried fields
 TrainSchema.index({ priority: 1, createdAt: -1 });
-TrainSchema.index({ id: 1 }, { unique: true });
-TrainSchema.index({ number: 1 }, { unique: true });
+// TrainSchema.index({ id: 1 }, { unique: true });
+// TrainSchema.index({ number: 1 }, { unique: true });
 TrainSchema.index({ type: 1 });
 TrainSchema.index({ createdAt: -1 });
 

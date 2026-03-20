@@ -1,8 +1,8 @@
 import mongoose from 'mongoose';
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/indian-railways';
-import { Train } from '../server/models/Train.ts';
+import { Train } from '../server/models/Train';
 import fs from 'fs';
-import { DIVISIONS } from '../constants.tsx';
+import { DIVISIONS } from '../constants';
 
 async function run() {
   let allTrains: any[] = [];
