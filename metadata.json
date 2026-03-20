@@ -1,0 +1,9 @@
+
+{
+  "name": "IR Controller Master Chart",
+  "description": "Professional-grade real-time railway traffic controller dashboard featuring time-distance (Marey) charts, multimodal timetable scanning, and Gemini Live AI assistant.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}

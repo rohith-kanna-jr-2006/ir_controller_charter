@@ -1,0 +1,44 @@
+
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>IR Controller Master Chart</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+        }
+        .chart-grid line {
+            stroke: #e2e8f0;
+            stroke-width: 1;
+        }
+        .station-label {
+            font-size: 10px;
+            fill: #475569;
+        }
+        .train-line {
+            fill: none;
+            stroke-width: 2;
+            transition: stroke-width 0.2s;
+        }
+        .train-line:hover {
+            stroke-width: 4;
+            cursor: pointer;
+        }
+        .hour-marker {
+            font-size: 12px;
+            font-weight: bold;
+            fill: #1e293b;
+        }
+    </style>
+        <link rel="stylesheet" href="/index.css">
+    </head>
+    <body class="bg-gray-100">
+        <div id="root"></div>
+        <script type="module" src="/index.tsx"></script>
+    </body>
+</html>
