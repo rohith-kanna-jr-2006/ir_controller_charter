@@ -50,11 +50,8 @@ export const parseTimetableText = (text: string) => {
   if (lines.length === 0) return { trains: [] };
 
   // STEP 1: DETECT ALL TRAIN SECTIONS
-  const allHeadersRegex = /\d{4,5}\/[^\n]+/g;
-  const detectedHeaders = text.match(allHeadersRegex);
-  console.log("DEBUG: DETECTED HEADERS (Regex Global):", detectedHeaders);
-
-  const headerRegex = /^\s*(\d{4,5})\/([A-Za-z\s\-\(\)\.,\[\]]+)/;
+  // Matches: "12345/Name" OR "Train Name"
+  const headerRegex = /^\s*(?:(\d{4,5})\/|Train\s+)([A-Za-z0-9\s\-\(\)\.,\[\]]+)/i;
   const sections: { headerLine: string; lines: string[]; text: string }[] = [];
   
   let currentSectionLines: string[] = [];
@@ -106,8 +103,8 @@ export const parseTimetableText = (text: string) => {
     const match = section.headerLine.match(headerRegex);
 
     if (match) {
-      number = match[1].trim();
-      name = match[2].trim();
+      number = match[1]?.trim() || '';
+      name = match[2]?.trim() || section.headerLine;
     } else {
       const backupHeader = sLines.find(l => /\b\d{4,5}\b/.test(l) && /-/.test(l));
       if (backupHeader) {
@@ -120,20 +117,24 @@ export const parseTimetableText = (text: string) => {
           number = numMatch ? numMatch[1] : '';
           name = backupHeader.split(number)[1]?.replace(/^[\s\-\/]+/, '') || backupHeader;
         }
+      } else {
+        name = sLines[0]; // Final fallback: first line is name
       }
     }
 
     console.log(`DEBUG: SECTION ${idx} PARSING ATTEMPT:`, { number, name, lineCount: sLines.length });
 
-    if (!number || !name) {
-      console.log(`DEBUG: SECTION ${idx} FAILED (NO NUMBER/NAME)`);
+    if (!name || name === 'Unknown') {
+      console.log(`DEBUG: SECTION ${idx} FAILED (NO NAME)`);
       return;
     }
 
     name = name.split(/\s(?:Type|Zone|Departs):/i)[0].trim().replace(/[\s\-]+$/, '');
 
+    // Improved Start detection: find first line with a station code and time
     const tableIdx = sLines.findIndex(l => /#?\s*Code\b/i.test(l) || /Station\s+Name/i.test(l));
-    const startIdx = tableIdx >= 0 ? tableIdx + 1 : sLines.findIndex(l => /\b[A-Z]{2,4}\b.*\d{1,2}:\d{2}/.test(l));
+    const firstRowIdx = sLines.findIndex(l => /^\s*\d+\s+[A-Z]{2,5}\s+.*\d{1,2}:\d{2}/.test(l));
+    const startIdx = tableIdx >= 0 ? tableIdx + 1 : (firstRowIdx >= 0 ? firstRowIdx : -1);
     
     if (startIdx < 0) {
       console.log(`DEBUG: SECTION ${idx} FAILED (NO TIMETABLE START FOUND)`);
@@ -152,28 +153,45 @@ export const parseTimetableText = (text: string) => {
       const timeMatches = row.match(/(\d{1,2}:\d{2})/g) || [];
       if (timeMatches.length === 0) continue;
 
-      const stationCode = (tokens[1] || "UNK").toUpperCase();
-      let firstTimeIdx = -1;
-      for (let j = 0; j < tokens.length; j++) {
-        if (/^\d{1,2}:\d{2}$/.test(tokens[j])) {
-          firstTimeIdx = j;
-          break;
+      // New parsing logic: [Index] [Code] [Name...] [Arr] [Dep] ... [Day X]
+      let stationCode = 'UNK';
+      let stationName = '';
+      let arrival = '00:00';
+      let departure = '00:00';
+      let explicitDay = -1;
+
+      // Find all time indices
+      const timeIndices = tokens.map((t, idx) => /^\d{1,2}:\d{2}$/.test(t) ? idx : -1).filter(idx => idx !== -1);
+      
+      if (timeIndices.length > 0) {
+        const firstTimeIdx = timeIndices[0];
+        
+        // If first token is numeric index, station code is second
+        const hasLeadingIndex = /^\d+$/.test(tokens[0]);
+        stationCode = (hasLeadingIndex ? tokens[1] : tokens[0]).toUpperCase();
+        
+        const nameStart = hasLeadingIndex ? 2 : 1;
+        stationName = tokens.slice(nameStart, firstTimeIdx).join(' ') || stationCode;
+        
+        arrival = tokens[firstTimeIdx];
+        departure = timeIndices.length > 1 ? tokens[timeIndices[1]] : arrival;
+
+        // Check for "Day X" or similar
+        const dayMatch = row.match(/Day\s*(\d+)/i);
+        if (dayMatch) {
+          explicitDay = parseInt(dayMatch[1], 10);
         }
+      } else {
+        continue; // No times found
       }
-      
-      const stationName = firstTimeIdx !== -1 
-        ? tokens.slice(2, firstTimeIdx).join(' ') 
-        : tokens.slice(2).join(' ') || stationCode;
-      
-      const arrival = timeMatches[0] || "00:00";
-      const departure = timeMatches[1] || arrival;
 
       intermediateStops.push({ 
         index: intermediateStops.length + 1,
         stationCode, 
         stationName,
         arrival, 
-        departure
+        departure,
+        explicitDay
       });
     }
 
@@ -188,15 +206,18 @@ export const parseTimetableText = (text: string) => {
       const sName = p.stationName || '';
       const sCode = p.stationCode;
       
-      if (/^\d+$/.test(sName) || sName.length < 3) return;
+      if (/^\d+$/.test(sName) || sName.length < 2) return;
       if (['EXT', 'UNK', 'PATH', 'EXTERNAL', 'TERMINATED'].includes(sCode)) return;
-      if (!/^[A-Z]{2,6}$/.test(sCode)) return;
+      if (!/^[A-Z0-9]{2,7}$/.test(sCode)) return;
 
       const timeToUse = p.arrival !== '00:00' ? p.arrival : p.departure;
       const [h, m] = timeToUse.split(':').map(Number);
       const totalMinutes = h * 60 + m;
 
-      if (lastTimeMinutes !== -1 && totalMinutes < lastTimeMinutes) {
+      // Use explicit day if found, otherwise calculate sequentiallly
+      if (p.explicitDay !== -1) {
+        currentDaySequence = p.explicitDay;
+      } else if (lastTimeMinutes !== -1 && totalMinutes < lastTimeMinutes) {
         currentDaySequence++;
       }
       

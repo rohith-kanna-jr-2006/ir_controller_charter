@@ -502,8 +502,9 @@ const App: React.FC = () => {
   };
 
   const handleAddTrain = async (newTrain: TrainPath, options?: { saveToServer?: boolean }) => {
+    console.log("COMMITTING SERVICE TO STATE/API:", newTrain);
     // Optimistic update
-    setTrains(prev => [...prev, newTrain]);
+    setTrains(prev => [...prev.filter(t => t.id !== newTrain.id), newTrain]);
     setIsAddModalOpen(false);
 
     try {
@@ -512,7 +513,6 @@ const App: React.FC = () => {
       } else {
         await trainService.saveTrain(newTrain);
       }
-      // no need to refresh everything, just ensure we have correct state
       console.log(`✓ Train "${newTrain.name}" saved successfully`);
     } catch (error) {
       console.error("Failed to save train, rolling back", error);
@@ -522,8 +522,8 @@ const App: React.FC = () => {
   };
 
   const handleUpdateTrain = async (updatedTrain: TrainPath) => {
+    console.log("UPDATING SERVICE:", updatedTrain);
     // Optimistic update
-    const backup = [...trains];
     setTrains(prev => prev.map(t => t.id === updatedTrain.id ? updatedTrain : t));
     setIsAddModalOpen(false);
     setEditingTrain(null);
@@ -533,8 +533,6 @@ const App: React.FC = () => {
       console.log(`✓ Train "${updatedTrain.name}" updated successfully`);
     } catch (error) {
       console.error("Failed to update train, rolling back", error);
-      setTrains(backup);
-      alert("Failed to update train. Please try again.");
     }
   };
 

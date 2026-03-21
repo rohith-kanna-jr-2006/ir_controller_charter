@@ -277,7 +277,7 @@ const AddTrainModal: React.FC<AddTrainModalProps> = ({ isOpen, onClose, onAdd, o
 
     try {
       const fileArray = Array.from(files);
-      const collectedTrains: any[] = [];
+      let combinedText = '';
 
       for (let i = 0; i < fileArray.length; i++) {
         const file = fileArray[i];
@@ -285,28 +285,33 @@ const AddTrainModal: React.FC<AddTrainModalProps> = ({ isOpen, onClose, onAdd, o
         if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
           try {
             const text = await extractTextFromPdfFile(file);
-            const parsed = parseTimetableText(text);
-            if (parsed && parsed.trains && parsed.trains.length > 0) {
-              const parsedStations = parsed.trains[0].stops;
-              console.log("PARSED STATIONS:", parsedStations.length);
-              console.log(parsedStations);
-              collectedTrains.push(...parsed.trains);
-            }
+            combinedText += text + '\n---\n'; // Use a separator for safety
           } catch (ex) {
-            console.error('Local PDF parse failed for', file.name, ex);
+            console.error('Local PDF extraction failed for', file.name, ex);
           }
         } else {
-          // non-pdf: skip for now
+          try {
+            const text = await file.text();
+            combinedText += text + '\n---\n';
+          } catch (ex) {
+            console.error('Local text read failed for', file.name, ex);
+          }
         }
-        await new Promise(r => setTimeout(r, 300));
+        await new Promise(r => setTimeout(r, 100));
       }
 
-      if (collectedTrains.length > 0) {
-        const results = mapAiResultToTrains(collectedTrains, stations, y, m, d);
-        setDetectedTrains(results);
-        setActiveTab('REVIEW');
+      if (combinedText.trim()) {
+        const parsed = parseTimetableText(combinedText);
+        if (parsed && parsed.trains && parsed.trains.length > 0) {
+          const results = mapAiResultToTrains(parsed.trains, stations, y, m, d);
+          setDetectedTrains(results);
+          setActiveTab('REVIEW');
+        } else {
+          // No trains found in successfully extracted text
+          alert('Extracted text found, but no train schedules could be parsed. Please verify the PDF format or use the MANUAL tab.');
+        }
       } else {
-        alert('No schedules were found in the selected files using the local extractor. Try clearer PDF pages or use the IMPORT tab.');
+        alert('Could not extract any text from the selected files. They might be scanned images without OCR.');
       }
     } catch (err) {
       console.error('Local batch extraction failed:', err);
@@ -541,37 +546,40 @@ const AddTrainModal: React.FC<AddTrainModalProps> = ({ isOpen, onClose, onAdd, o
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!number || !name || points.length === 0) return;
+    // Relaxed validation: Allow if we have at least numeric inputs even if missing name
+    if (points.length === 0) return;
+
     const [y, m, d] = chartDate.split('-').map(Number);
     const formatted = points.map(p => {
-      const [ah, am] = p.arrivalTime.split(':').map(Number);
-      const [dh, dm] = p.departureTime.split(':').map(Number);
+      const [ah, am] = (p.arrivalTime || "00:00").split(':').map(Number);
+      const [dh, dm] = (p.departureTime || "00:00").split(':').map(Number);
 
       const arrivalDate = new Date(y, m - 1, d, ah, am);
-      arrivalDate.setDate(arrivalDate.getDate() + p.dayOffset);
+      arrivalDate.setDate(arrivalDate.getDate() + (p.dayOffset || 0));
 
       const departureDate = new Date(y, m - 1, d, dh, dm);
-      departureDate.setDate(departureDate.getDate() + p.dayOffset);
+      departureDate.setDate(departureDate.getDate() + (p.dayOffset || 0));
 
-      const absoluteArrival = (p.dayOffset * 1440) + (ah * 60) + am;
-      const absoluteDeparture = (p.dayOffset * 1440) + (dh * 60) + dm;
+      const absoluteArrival = ((p.dayOffset || 0) * 1440) + (ah * 60) + am;
+      const absoluteDeparture = ((p.dayOffset || 0) * 1440) + (dh * 60) + dm;
 
       return {
         stationId: p.stationId,
         arrivalTime: arrivalDate,
         departureTime: departureDate,
-        runtime_day_offset: p.dayOffset,
+        runtime_day_offset: p.dayOffset || 0,
         absolute_time: absoluteArrival,
         absolute_departure_time: absoluteDeparture
       };
     });
 
-    const trainId = initialTrain ? initialTrain.id : `T-${number.trim().toUpperCase()}`;
+    const trainId = initialTrain ? initialTrain.id : `T-${(number || Date.now()).toString().trim().toUpperCase()}`;
 
     const trainData: TrainPath = {
       id: trainId,
-      number: number.trim(),
-      name, type, color, priority, 
+      number: (number || '00000').toString().trim(),
+      name: name || 'Manual Entry', 
+      type, color, priority, 
       points: formatted,
       stops: formatted,
       timetable: formatted,

@@ -62,7 +62,8 @@ const MasterChart: React.FC<MasterChartProps> = ({ trains, stations, config, onT
     // STEP 1 & 3: ABSOLUTE & DYNAMIC TIME RANGE
     const allAbsPoints: number[] = [];
     trains.forEach(t => {
-      t.points.forEach(p => {
+      const stopsToUse = t.stops || t.points || [];
+      stopsToUse.forEach(p => {
         const hArr = p.arrivalTime.getHours();
         const mArr = p.arrivalTime.getMinutes();
         const absArr = (p.runtime_day_offset || 0) * 1440 + (hArr * 60 + mArr);
@@ -165,7 +166,8 @@ const MasterChart: React.FC<MasterChartProps> = ({ trains, stations, config, onT
 
     const processedTrains = trains.map(train => {
       const renderPoints: Array<{x: number, y: number}> = [];
-      train.points.forEach(p => {
+      const stopsToUse = train.stops || train.points || [];
+      stopsToUse.forEach(p => {
         const station = stations.find(s => s.code === (findStationGlobally(p.stationId)?.code || p.stationId.split('_')[0]));
         if (station) {
           const absArr = (p.runtime_day_offset || 0) * 1440 + (p.arrivalTime.getHours() * 60 + p.arrivalTime.getMinutes());
